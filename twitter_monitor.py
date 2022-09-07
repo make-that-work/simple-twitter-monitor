@@ -153,6 +153,8 @@ for u in usernames:
     all_words = []
     tweets_of_interest = []
 
+    print("Found " + str(len(tweet_data)) + " tweets for " + USERNAME)
+
     if len(tweet_data)==0:
         continue
 
