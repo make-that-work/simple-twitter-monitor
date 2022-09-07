@@ -1,6 +1,6 @@
 # Twitter Monitor Scripts
 
-Twitter's API is really cool.
+Twitter's API is really cool. Here are some starter scripts for working with it!
 
 ## Simple Script
 
