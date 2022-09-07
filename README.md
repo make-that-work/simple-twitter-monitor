@@ -8,6 +8,8 @@ Twitter's API is really cool. Here are some starter scripts for working with it!
 
 `simple_twitter_monitor.py` is a script that gets tweet data and puts it in Airtable.
 
+The script ignores retweets and reply tweets that the account has made. This is switchable in the call to the Twitter API. 
+
 ### Airtable
 
 The script sends the data it gets via the Twitter API to an Airtable table. You will need to set up a table in your account and create the necessary columns (or change the script to suit your own needs!)
