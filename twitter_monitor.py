@@ -19,6 +19,8 @@ import os
 
 # vvv SET YOUR PARAMS HERE vvv
 # ============================
+
+# Specify what Twitter accounts you're interested in:
 usernames = [
   "MakeThatWorkEng",
   "Apple",
@@ -30,7 +32,7 @@ usernames = [
   "YouTube"
 ]
 
-# AIRTABLE PARAMSs
+# Set params for your Airtable
 TABLE = "Twitter Monitor"
 BASE = os.environ["TWITTER_BASE_ID"]
 API_KEY = os.environ["AIRTABLE_API_KEY"]
@@ -38,28 +40,45 @@ API_KEY = os.environ["AIRTABLE_API_KEY"]
 # Connect to Airtable
 table = Table(API_KEY, BASE, TABLE)
 
-# TWITTER PARAMS
+# Set params for your Twitter API access
 auth_header = "Bearer " + os.environ["TWITTER_KEY"]
 headers = {"Authorization": auth_header}
+
+# Set the max number of tweets you want to retrieve
 DESIRED_RESULTS = 1000
+
+# Max results from one API call (Twitter set a max of 100)
 MAX_RESULTS = "100"
+
+# Calculate the number of separate calls to the API in order to get the number of desired tweets (DESIRED_RESULTS)
 ROUNDS = math.ceil(int(DESIRED_RESULTS)/100) # how many rounds to go through to get to the max number of results 
+
+# The base url of the Twitter API
 base_url = "https://api.twitter.com/2/"
 
 # ^^^ MAKE SURE YOUR PARAMS ARE SET ABOVE ^^^
 # ===========================================
 
 def find_hashtags_in_tweet(a_tweet):
+    '''
+        For a given tweet, return an array of all hashtags
+    '''
     split_tweet = re.split("[\s:/,.:]", a_tweet)
     
     return [s for s in split_tweet if len(s)>1 and s[0]=="#"]
 
 def find_mentions_in_tweet(a_tweet):
+    '''
+        For a given tweet, return an array of all mentions (i.e. @<SOMEONE>)
+    '''
     split_tweet = re.split("[\s:/,.:]", a_tweet)
 
     return [s for s in split_tweet if len(s)>1 and s[0]=="@"]
 
 def find_words_in_tweet(a_tweet):
+    '''
+        For a given tweet, return an array of all words 
+    '''
     split_tweet = re.split("[\s:/,.:]", a_tweet)
 
     return split_tweet
@@ -68,7 +87,7 @@ def find_words_in_tweet(a_tweet):
 for u in usernames:
     USERNAME = u
 
-    # AIRTABLE STUFF PART 1
+    # AIRTABLE STUFF
     # if there is already a record we need to get the timestamp
     formula = match({"Username": USERNAME})
 
@@ -79,18 +98,18 @@ for u in usernames:
 
     all_records_for_accountname = table.all(formula=formula, sort=["Timestamp"])
 
-
     if len(all_records_for_accountname)>0:
-        print("record exists")
+        print("Record exists. Starting from latest stored data")
         last_record = all_records_for_accountname[-1]
         time_from = last_record["fields"]["Timestamp"]
     else:
-        print("no existing record found")
+        print("No existing record found. Going back 1 month.")
         time_from = (NOW + dateutil.relativedelta.relativedelta(months=-1)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # TWITTER STUFF
+    # Placeholder pagination token for the Twitter API
     PAG_TOKEN = ""
 
+    # Define a dictionary to hold the Twitter data
     account_collection = {
         "username": "",
         "description": "",
@@ -113,10 +132,12 @@ for u in usernames:
         "ten_most_recent_tweets": []
     }
 
+    # Set the timestamps for the period we are retrieving Tweets froms
     account_collection["date_from"] = time_from
     account_collection["date_to"] = time_now
     account_collection["date_now"] = time_now
-    
+
+    # Get the user's important info (description and followers)
     user_lookup = "users/by/username/" + USERNAME
 
     r = requests.get(base_url + user_lookup, headers=headers)
@@ -132,9 +153,10 @@ for u in usernames:
     account_collection["followers"] = num_followers
     account_collection["description"] = description
 
-    # LOOP FOR GETTING TWEET DATA
+    # Get the user's tweets over the period of interest
     tweet_data = []
 
+    # Need to keep looping as Twitter's API only returns a max of 100 tweets per API call
     for i in range(0,ROUNDS):
         if i==0:
             tweet_timeline = "users/" + user_id + "/tweets?start_time=" + time_from + "&exclude=retweets,replies&max_results=" + MAX_RESULTS + "&expansions=attachments.poll_ids,attachments.media_keys,author_id,entities.mentions.username,geo.place_id,in_reply_to_user_id,referenced_tweets.id,referenced_tweets.id.author_id&tweet.fields=attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld" #&pagination_token=7140dibdnow9c7btw421dwu5n9nhkozgotv8vo4uapx69"
@@ -159,6 +181,7 @@ for u in usernames:
     if len(tweet_data)==0:
         continue
 
+    # Extract all the information you are interested in for each tweet retrieved
     for t in tweet_data:
 
         all_words.append(t["text"])
@@ -171,57 +194,60 @@ for u in usernames:
 
         hashtags = find_hashtags_in_tweet(t["text"])
 
-
+    # Most recent Tweets
     account_collection["ten_most_recent_tweets"] = tweet_data[0:10]
 
+    # Likes
     likes_arr = np.array([t["public_metrics"]["like_count"] for t in tweet_data])
     most_likes = likes_arr.max()
     average_likes = likes_arr.mean()
 
+    # Retweets
     retweets_arr = np.array([t["public_metrics"]["retweet_count"] for t in tweet_data])
     most_retweets = retweets_arr.max()
     average_retweets = retweets_arr.mean()
 
+    # Quotes
     quotes_arr = np.array([t["public_metrics"]["quote_count"] for t in tweet_data])
     most_quotes = quotes_arr.max()
     average_quotes = quotes_arr.mean()
 
+    # Replies
     replies_arr = np.array([t["public_metrics"]["reply_count"] for t in tweet_data])
     most_replies = replies_arr.max()
     average_replies = replies_arr.mean()
 
-    account_collection["av_likes"] = average_likes
-    account_collection["av_quotes"] = average_quotes
-    account_collection["av_replies"] = average_replies
-    account_collection["av_retweets"] = average_retweets
-
+    # Hashtags
     hashtags = [find_hashtags_in_tweet(t["text"]) for t in tweet_data]
     hashtags = [ht for sub_ht in hashtags for ht in sub_ht]
     ten_most_used_hashtags = Counter(hashtags).most_common(10)
 
+    # Mentions
     mentions = [find_mentions_in_tweet(t["text"]) for t in tweet_data]
     mentions = [m for sub_m in mentions for m in sub_m]
     ten_most_mentioned = Counter(mentions).most_common(10)
 
-    account_collection["top_ten_hashtags_used"] = ten_most_used_hashtags
-    account_collection["top_ten_mentioned"] = ten_most_mentioned
-
-    # sort for top 10 likes, retweets, replies and quotes
+    # Sort for top 10 likes, retweets, replies and quotes
     top_ten_liked = sorted(tweet_data, key=lambda d: d["public_metrics"]["like_count"])[-10:]
     top_ten_replied = sorted(tweet_data, key=lambda d: d["public_metrics"]["reply_count"])[-10:]
     top_ten_quoted = sorted(tweet_data, key=lambda d: d["public_metrics"]["quote_count"])[-10:]
     top_ten_retweeted = sorted(tweet_data, key=lambda d: d["public_metrics"]["retweet_count"])[-10:]
 
+    # Fill up the info dictionary
+    account_collection["av_likes"] = average_likes
+    account_collection["av_quotes"] = average_quotes
+    account_collection["av_replies"] = average_replies
+    account_collection["av_retweets"] = average_retweets
+    account_collection["top_ten_hashtags_used"] = ten_most_used_hashtags
+    account_collection["top_ten_mentioned"] = ten_most_mentioned
     account_collection["top_ten_liked"] = top_ten_liked
     account_collection["top_ten_replied"] = top_ten_replied
     account_collection["top_ten_quoted"] = top_ten_quoted
     account_collection["top_ten_retweeted"] = top_ten_retweeted
-
     account_collection["num_posts_last_30_days"] = len(tweet_data)
-
     account_collection["username"] = USERNAME
 
-    # GET THE DATA INTO AIRTABLE
+    # Push the data into Airtable
     table.create({"Timestamp": account_collection["date_now"], 
                     "Description": account_collection["description"],
                     "Start Timestamp": account_collection["date_from"],
@@ -240,4 +266,3 @@ for u in usernames:
                     "TopTenHashtags": str(account_collection["top_ten_hashtags_used"]),
                     "TopTenMentioned": str(account_collection["top_ten_mentioned"])
                     })
-
