@@ -12,7 +12,7 @@ Twitter's API is really cool. Here are some starter scripts for working with it!
 
 The script sends the data it gets via the Twitter API to an Airtable table. You will need to set up a table in your account and create the necessary columns (or change the script to suit your own needs!)
 
-![Image](airtable_table.gif)
+![Image](/airtable_table.gif)
 
 Columns:
 
