@@ -159,7 +159,7 @@ for u in usernames:
     # Need to keep looping as Twitter's API only returns a max of 100 tweets per API call
     for i in range(0,ROUNDS):
         if i==0:
-            tweet_timeline = "users/" + user_id + "/tweets?start_time=" + time_from + "&exclude=retweets,replies&max_results=" + MAX_RESULTS + "&expansions=attachments.poll_ids,attachments.media_keys,author_id,entities.mentions.username,geo.place_id,in_reply_to_user_id,referenced_tweets.id,referenced_tweets.id.author_id&tweet.fields=attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld" #&pagination_token=7140dibdnow9c7btw421dwu5n9nhkozgotv8vo4uapx69"
+            tweet_timeline = "users/" + user_id + "/tweets?start_time=" + time_from + "&exclude=retweets,replies&max_results=" + MAX_RESULTS + "&expansions=attachments.poll_ids,attachments.media_keys,author_id,entities.mentions.username,geo.place_id,in_reply_to_user_id,referenced_tweets.id,referenced_tweets.id.author_id&tweet.fields=attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,public_metrics,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld"
         else:
             if PAG_TOKEN == "":
                 print("no more tweets for " + USERNAME)
